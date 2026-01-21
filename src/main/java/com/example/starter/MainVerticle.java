@@ -16,6 +16,10 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.JWTAuthHandler;
 
+import com.example.starter.repository.KycRepository;
+import com.example.starter.service.KycService;
+import com.example.starter.controller.KycController;
+
 public class MainVerticle extends AbstractVerticle {
 
   @Override
@@ -33,12 +37,19 @@ public class MainVerticle extends AbstractVerticle {
     UserRepository userRepository = new UserRepository(vertx);
 
     AuthService authService = new AuthService(userRepository, jwtAuth);
-    AdminService adminService = new AdminService(userRepository);
+    KycRepository kycRepository = new KycRepository(vertx);
+    AdminService adminService = new AdminService(userRepository,kycRepository);
 
     AuthController authController = new AuthController(authService);
     AdminController adminController = new AdminController(adminService);
 
+
+    KycService kycService = new KycService(kycRepository, userRepository);
+    KycController kycController = new KycController(kycService);
+
+
     Router router = Router.router(vertx);
+    router.route().handler(BodyHandler.create().setUploadsDirectory("uploads"));
 
 
     router.route().handler(BodyHandler.create());
@@ -75,6 +86,25 @@ public class MainVerticle extends AbstractVerticle {
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("ADMIN"))
       .handler(adminController::changeUserStatus);
+
+    router.post("/api/kyc/submit")
+      .handler(jwtHandler)
+      .handler(kycController::submitKyc);
+
+    router.get("/api/kyc/status")
+      .handler(jwtHandler)
+      .handler(kycController::getStatus);
+
+    router.get("/api/admin/kyc")
+      .handler(jwtHandler)
+      .handler(RoleHandler.requireRole("ADMIN"))
+      .handler(adminController::listKycs);
+
+    router.put("/api/admin/kyc/:id/review")
+      .handler(jwtHandler)
+      .handler(RoleHandler.requireRole("ADMIN"))
+      .handler(adminController::reviewKyc);
+
 
     vertx.createHttpServer()
       .requestHandler(router)

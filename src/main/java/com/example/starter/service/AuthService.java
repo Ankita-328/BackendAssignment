@@ -40,7 +40,7 @@ public class AuthService {
         new JsonObject()
           .put("userId", user.getId().toString())
           .put("role", user.getRole().toString()),
-        new JWTOptions().setExpiresInMinutes(60)
+        new JWTOptions().setExpiresInMinutes(80000)
       );
     });
   }

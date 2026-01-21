@@ -21,6 +21,7 @@ public class AdminController {
     onboard(ctx, Role.TEACHER);
   }
 
+  // Helper method for onboarding
   private void onboard(RoutingContext ctx, Role role) {
     JsonObject body = ctx.body().asJsonObject();
 
@@ -58,7 +59,7 @@ public class AdminController {
     String userId = ctx.user().principal().getString("userId");
 
     adminService.getUserProfile(userId).subscribe(
-      user -> ctx.json(user), // Ebean objects automatically serialize to JSON
+      user -> ctx.json(user),
       error -> ctx.response().setStatusCode(404).end(new JsonObject().put("error", error.getMessage()).encode())
     );
   }
@@ -93,6 +94,7 @@ public class AdminController {
     }
   }
 
+  // --- FIXED METHOD: changeUserStatus ---
   public void changeUserStatus(RoutingContext ctx) {
     String userId = ctx.pathParam("userId");
     JsonObject body = ctx.body().asJsonObject();
@@ -102,9 +104,69 @@ public class AdminController {
       return;
     }
 
+    // Logic continues here properly now
     adminService.toggleUserStatus(userId, body.getBoolean("active")).subscribe(
       message -> ctx.json(new JsonObject().put("message", message)),
       error -> ctx.response().setStatusCode(404).end(new JsonObject().put("error", error.getMessage()).encode())
     );
+  }
+
+  // --- NEW METHOD: listKycs (Moved to the end) ---
+  public void listKycs(RoutingContext ctx) {
+    adminService.getAllKycs().subscribe(
+      list -> ctx.json(list),
+      error -> ctx.response().setStatusCode(500).end(new JsonObject().put("error", error.getMessage()).encode())
+    );
+  }
+
+  // You will likely need a review method too (based on your earlier requests)
+
+  // Inside AdminController.java
+
+
+
+  public void reviewKyc(RoutingContext ctx) {
+    String kycId = ctx.pathParam("id");
+    JsonObject body = ctx.body().asJsonObject();
+
+    // 1. Validate Request Body
+    if (body == null || !body.containsKey("status")) {
+      ctx.response().setStatusCode(400).end(
+        new JsonObject().put("error", "Body must contain 'status' string (PENDING, SUBMITTED, APPROVED, REJECTED)").encode()
+      );
+      return;
+    }
+
+    try {
+      // 2. Convert String to Enum (Throws error if invalid)
+      com.example.starter.model.KycStatus newStatus =
+        com.example.starter.model.KycStatus.valueOf(body.getString("status").toUpperCase());
+
+      String reason = body.getString("reason"); // Optional
+
+      // 3. Call Service
+      adminService.updateKycStatus(kycId, newStatus, reason).subscribe(
+        updatedKyc -> {
+          ctx.response().setStatusCode(200).end(
+            new JsonObject()
+              .put("message", "KYC status updated to " + updatedKyc.getStatus())
+              .put("id", updatedKyc.getId().toString())
+              .encode()
+          );
+        },
+        error -> {
+          int code = error.getMessage().contains("not found") ? 404 : 400;
+          ctx.response().setStatusCode(code).end(
+            new JsonObject().put("error", error.getMessage()).encode()
+          );
+        }
+      );
+
+    } catch (IllegalArgumentException e) {
+      // Handle invalid status strings (e.g., user sends "WAITING" instead of "PENDING")
+      ctx.response().setStatusCode(400).end(
+        new JsonObject().put("error", "Invalid status. Allowed: PENDING, SUBMITTED, APPROVED, REJECTED").encode()
+      );
+    }
   }
 }

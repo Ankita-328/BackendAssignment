@@ -34,10 +34,12 @@ dependencies {
 
   implementation("io.ebean:ebean:13.11.0")
   implementation("io.ebean:ebean-querybean:13.11.0")
-  implementation("mysql:mysql-connector-j:8.3.0")
+  implementation("com.mysql:mysql-connector-j:8.3.0")
 
   implementation("com.opencsv:opencsv:5.9")
   implementation("ch.qos.logback:logback-classic:1.4.14")
+
+  implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 
   testImplementation("io.vertx:vertx-junit5")
   testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
