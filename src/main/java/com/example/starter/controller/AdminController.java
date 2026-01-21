@@ -1,0 +1,110 @@
+package com.example.starter.controller;
+
+import com.example.starter.model.Role;
+import com.example.starter.service.AdminService;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.RoutingContext;
+
+public class AdminController {
+
+  private final AdminService adminService;
+
+  public AdminController(AdminService adminService) {
+    this.adminService = adminService;
+  }
+
+  public void onboardStudent(RoutingContext ctx) {
+    onboard(ctx, Role.STUDENT);
+  }
+
+  public void onboardTeacher(RoutingContext ctx) {
+    onboard(ctx, Role.TEACHER);
+  }
+
+  private void onboard(RoutingContext ctx, Role role) {
+    JsonObject body = ctx.body().asJsonObject();
+
+    if (body == null || !body.containsKey("email") || !body.containsKey("initialPassword") || !body.containsKey("fullName")) {
+      ctx.response().setStatusCode(400).end(
+        new JsonObject().put("error", "Missing required fields: fullName, email, initialPassword").encode()
+      );
+      return;
+    }
+
+    adminService.onboardUser(
+      body.getString("fullName"),
+      body.getString("email"),
+      body.getString("mobileNumber"),
+      body.getString("initialPassword"),
+      role
+    ).subscribe(
+      createdUser -> {
+        ctx.response().setStatusCode(201).end(
+          new JsonObject()
+            .put("message", role + " created successfully")
+            .put("userId", createdUser.getId().toString())
+            .encode()
+        );
+      },
+      error -> {
+        ctx.response().setStatusCode(400).end(
+          new JsonObject().put("error", error.getMessage()).encode()
+        );
+      }
+    );
+  }
+
+  public void getProfile(RoutingContext ctx) {
+    String userId = ctx.user().principal().getString("userId");
+
+    adminService.getUserProfile(userId).subscribe(
+      user -> ctx.json(user), // Ebean objects automatically serialize to JSON
+      error -> ctx.response().setStatusCode(404).end(new JsonObject().put("error", error.getMessage()).encode())
+    );
+  }
+
+  public void updateProfile(RoutingContext ctx) {
+    String userId = ctx.user().principal().getString("userId");
+    JsonObject body = ctx.body().asJsonObject();
+
+    adminService.updateProfile(userId, body.getString("fullName"), body.getString("mobileNumber"))
+      .subscribe(
+        updatedUser -> ctx.json(updatedUser),
+        error -> ctx.response().setStatusCode(400).end(new JsonObject().put("error", error.getMessage()).encode())
+      );
+  }
+
+  public void listUsers(RoutingContext ctx) {
+    String roleParam = ctx.request().getParam("role");
+
+    if (roleParam == null) {
+      ctx.response().setStatusCode(400).end(new JsonObject().put("error", "Query param 'role' is required").encode());
+      return;
+    }
+
+    try {
+      Role role = Role.valueOf(roleParam.toUpperCase());
+      adminService.listUsers(role).subscribe(
+        users -> ctx.json(users),
+        error -> ctx.response().setStatusCode(500).end(new JsonObject().put("error", error.getMessage()).encode())
+      );
+    } catch (IllegalArgumentException e) {
+      ctx.response().setStatusCode(400).end(new JsonObject().put("error", "Invalid role specified").encode());
+    }
+  }
+
+  public void changeUserStatus(RoutingContext ctx) {
+    String userId = ctx.pathParam("userId");
+    JsonObject body = ctx.body().asJsonObject();
+
+    if (body == null || !body.containsKey("active")) {
+      ctx.response().setStatusCode(400).end(new JsonObject().put("error", "Body must contain 'active' boolean").encode());
+      return;
+    }
+
+    adminService.toggleUserStatus(userId, body.getBoolean("active")).subscribe(
+      message -> ctx.json(new JsonObject().put("message", message)),
+      error -> ctx.response().setStatusCode(404).end(new JsonObject().put("error", error.getMessage()).encode())
+    );
+  }
+}
