@@ -13,18 +13,14 @@ public class KycController {
     this.kycService = kycService;
   }
 
-  // Handler for: POST /api/kyc/submit
   public void submitKyc(RoutingContext ctx) {
-    // 1. Get User ID from Token
     String userId = ctx.user().principal().getString("userId");
 
-    // 2. Validate File Upload
     if (ctx.fileUploads().isEmpty()) {
       ctx.response().setStatusCode(400).end(new JsonObject().put("error", "No file uploaded").encode());
       return;
     }
 
-    // 3. Extract Data
     FileUpload file = ctx.fileUploads().iterator().next();
     String filePath = file.uploadedFileName(); // Vert.x stores it in 'uploads/' folder
     String docType = ctx.request().getFormAttribute("documentType");
@@ -35,14 +31,12 @@ public class KycController {
       return;
     }
 
-    // 4. Call Service
     kycService.submitKyc(userId, docType, docNumber, filePath).subscribe(
       kyc -> ctx.response().setStatusCode(201).end(new JsonObject().put("message", "KYC Submitted Successfully").put("status", kyc.getStatus()).encode()),
       error -> ctx.response().setStatusCode(400).end(new JsonObject().put("error", error.getMessage()).encode())
     );
   }
 
-  // Handler for: GET /api/kyc/status
   public void getStatus(RoutingContext ctx) {
     String userId = ctx.user().principal().getString("userId");
 

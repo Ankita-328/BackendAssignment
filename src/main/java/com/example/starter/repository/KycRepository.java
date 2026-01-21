@@ -68,7 +68,6 @@ public class KycRepository {
     });
   }
 
-  // --- THIS WAS MISSING! ADD THIS METHOD ---
   public Single<KycSubmission> findById(String id) {
     return Single.create(emitter -> {
       vertx.executeBlocking(promise -> {

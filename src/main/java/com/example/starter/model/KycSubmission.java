@@ -39,7 +39,7 @@ public class KycSubmission extends Model {
     this.submittedAt = Instant.now();
   }
 
-  // --- Getters and Setters ---
+
   public UUID getId() { return id; }
   public void setId(UUID id) { this.id = id; }
 

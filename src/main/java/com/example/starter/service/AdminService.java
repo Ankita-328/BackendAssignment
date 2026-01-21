@@ -16,9 +16,8 @@ import java.util.UUID;
 public class AdminService {
 
   private final UserRepository userRepository;
-  private final KycRepository kycRepository; // <--- 1. ADD THIS FIELD
+  private final KycRepository kycRepository;
 
-  // 2. UPDATE CONSTRUCTOR TO ACCEPT BOTH REPOS
   public AdminService(UserRepository userRepository, KycRepository kycRepository) {
     this.userRepository = userRepository;
     this.kycRepository = kycRepository;
@@ -81,42 +80,23 @@ public class AdminService {
     });
   }
 
-  // --- NEW KYC METHODS ---
 
   public Single<List<KycSubmission>> getAllKycs() {
     return kycRepository.findAll();
   }
-  public Single<KycSubmission> verifyKyc(String kycId, boolean approve, String reason) {
-    return kycRepository.findById(kycId).flatMap(kyc -> {
-      if (kyc == null) throw new RuntimeException("KYC not found");
 
-      if (approve) {
-        kyc.setStatus(KycStatus.APPROVED);
-        kyc.setRejectionReason(null);
-      } else {
-        kyc.setStatus(KycStatus.REJECTED);
-        kyc.setRejectionReason(reason);
-      }
-      return kycRepository.save(kyc);
-    });
-  }
+//  public Single<KycSubmission> verifyKyc(String kycId, boolean approve, String reason) {
+//    return kycRepository.findById(kycId).flatMap(kyc -> {
+//      if (kyc == null) throw new RuntimeException("KYC not found");
+//      return kycRepository.save(kyc);
+//    });
+//  }
 
-  // Replace the old 'verifyKyc' method with this:
 
   public Single<KycSubmission> updateKycStatus(String kycId, com.example.starter.model.KycStatus newStatus, String reason) {
     return kycRepository.findById(kycId).flatMap(kyc -> {
       if (kyc == null) throw new RuntimeException("KYC not found");
-
-      // Set the new status
       kyc.setStatus(newStatus);
-
-      // Only save the reason if it is REJECTED; otherwise clear it
-      if (newStatus == com.example.starter.model.KycStatus.REJECTED) {
-        kyc.setRejectionReason(reason);
-      } else {
-        kyc.setRejectionReason(null);
-      }
-
       return kycRepository.save(kyc);
     });
   }
