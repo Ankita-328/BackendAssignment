@@ -1,5 +1,5 @@
 package com.example.starter.model;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.ebean.Model;
 import io.ebean.annotation.NotNull;
 import javax.persistence.*;
@@ -27,6 +27,7 @@ public class User extends Model {
   private String mobileNumber;
 
   @NotNull
+  @JsonIgnore
   private String password; // Hashed
 
   private boolean active = true;
