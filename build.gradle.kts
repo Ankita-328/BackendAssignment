@@ -5,7 +5,7 @@ plugins {
   java
   application
   id("com.gradleup.shadow") version "8.3.0"
-  id("io.ebean") version "13.11.0" 
+  id("io.ebean") version "13.11.0"
 }
 
 group = "com.example"
@@ -15,7 +15,7 @@ repositories {
   mavenCentral()
 }
 
-val vertxVersion = "4.5.1" 
+val vertxVersion = "4.5.1"
 val junitJupiterVersion = "5.9.1"
 
 application {
@@ -41,6 +41,8 @@ dependencies {
 
   testImplementation("io.vertx:vertx-junit5")
   testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
+
+  implementation("io.vertx:vertx-auth-jwt:4.5.1")
 }
 
 java {
