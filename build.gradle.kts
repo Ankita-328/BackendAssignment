@@ -45,6 +45,10 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
 
   implementation("io.vertx:vertx-auth-jwt:4.5.1")
+
+  compileOnly("org.projectlombok:lombok:1.18.30")
+
+  implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.14.0")
 }
 
 java {

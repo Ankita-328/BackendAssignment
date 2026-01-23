@@ -1,0 +1,5 @@
+fullName,email,mobileNumber,role,initialPassword
+Rahul Sharma,rahul.sharma@test.com,9876543210,STUDENT,Temp@123
+Anita Verma,anita.verma@test.com,9123456789,TEACHER,Temp@123
+Yukta Chouhan,yukta.chouhan@test.com,8769034008,STUDENT,Temp@123
+Sam Singh,sam.singh@test.com,6787435690,STUDENT,Temp@123

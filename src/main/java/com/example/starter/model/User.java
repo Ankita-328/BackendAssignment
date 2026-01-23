@@ -32,9 +32,9 @@ public class User extends Model {
 
   private boolean active = true;
 
-  private String qualification;
-  private Integer experienceYears;
-  private String courseEnrolled;
+//  private String qualification;
+//  private Integer experienceYears;
+//  private String courseEnrolled;
 
   @Column(name = "created_at")
   private Instant createdAt;
@@ -77,10 +77,10 @@ public class User extends Model {
    public Instant getCreatedAt() { return createdAt; }
    public Instant getUpdatedAt() { return updatedAt; }
 
-  public String getQualification() { return qualification; }
-  public void setQualification(String qualification) { this.qualification = qualification; }
-  public Integer getExperienceYears() { return experienceYears; }
-  public void setExperienceYears(Integer experienceYears) { this.experienceYears = experienceYears; }
-  public String getCourseEnrolled() { return courseEnrolled; }
-  public void setCourseEnrolled(String courseEnrolled) { this.courseEnrolled = courseEnrolled; }
+//  public String getQualification() { return qualification; }
+//  public void setQualification(String qualification) { this.qualification = qualification; }
+//  public Integer getExperienceYears() { return experienceYears; }
+//  public void setExperienceYears(Integer experienceYears) { this.experienceYears = experienceYears; }
+//  public String getCourseEnrolled() { return courseEnrolled; }
+//  public void setCourseEnrolled(String courseEnrolled) { this.courseEnrolled = courseEnrolled; }
 }

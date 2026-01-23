@@ -3,45 +3,53 @@ package com.example.starter;
 import com.example.starter.config.AdminSeeder;
 import com.example.starter.config.AuthConfig;
 import com.example.starter.config.DbConfig;
-import com.example.starter.controller.AdminController;
-import com.example.starter.controller.AuthController;
-import com.example.starter.controller.RoleHandler;
-import com.example.starter.repository.UserRepository;
+import com.example.starter.controller.*;
+import com.example.starter.repository.*;
 import com.example.starter.service.AdminService;
 import com.example.starter.service.AuthService;
+import com.example.starter.service.UpdateService;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.JWTAuthHandler;
 
-import com.example.starter.repository.KycRepository;
 import com.example.starter.service.KycService;
-import com.example.starter.controller.KycController;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.vertx.core.json.jackson.DatabindCodec;
 
 public class MainVerticle extends AbstractVerticle {
+
+
 
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
 
     DbConfig.setup();
     AdminSeeder.seed();
+    DatabindCodec.mapper().registerModule(new JavaTimeModule());
 
-    // 2. Setup Security (JWT)
     JWTAuth jwtAuth = AuthConfig.createAuthProvider(vertx);
     JWTAuthHandler jwtHandler = JWTAuthHandler.create(jwtAuth);
 
-    // 3. Initialize Layers (Repository -> Service -> Controller)
-    // We pass 'vertx' to the repository so it can do async DB calls.
+
     UserRepository userRepository = new UserRepository(vertx);
 
     AuthService authService = new AuthService(userRepository, jwtAuth);
     KycRepository kycRepository = new KycRepository(vertx);
-    AdminService adminService = new AdminService(userRepository,kycRepository);
+    BulkUploadRepository bulkRepo = new BulkUploadRepository();
+    StudentDetailsRepository studentDetailsRepo = new StudentDetailsRepository();
+    TeacherDetailsRepository teacherDetailsRepo = new TeacherDetailsRepository();
+    AdminService adminService = new AdminService(userRepository, kycRepository, bulkRepo);
+    UpdateService updateService = new UpdateService(userRepository,teacherDetailsRepo,studentDetailsRepo);
+
 
     AuthController authController = new AuthController(authService);
     AdminController adminController = new AdminController(adminService);
+    UpdateController updateController = new UpdateController(updateService);
 
 
     KycService kycService = new KycService(kycRepository, userRepository);
@@ -51,8 +59,6 @@ public class MainVerticle extends AbstractVerticle {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create().setUploadsDirectory("uploads"));
 
-
-    router.route().handler(BodyHandler.create());
 
     router.post("/api/auth/login").handler(authController::login);
 
@@ -76,6 +82,16 @@ public class MainVerticle extends AbstractVerticle {
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("ADMIN"))
       .handler(adminController::updateProfile);
+
+    router.put("/api/student/profile")
+      .handler(jwtHandler)
+      .handler(RoleHandler.requireRole("STUDENT"))
+      .handler(updateController::updateProfile);
+
+    router.put("/api/teacher/profile")
+      .handler(jwtHandler)
+      .handler(RoleHandler.requireRole("TEACHER"))
+      .handler(updateController::updateProfile);
 
     router.get("/api/admin/users")
       .handler(jwtHandler)
@@ -105,6 +121,22 @@ public class MainVerticle extends AbstractVerticle {
       .handler(RoleHandler.requireRole("ADMIN"))
       .handler(adminController::reviewKyc);
 
+//    router.post("/api/admin/bulk-upload")
+//      .handler(jwtHandler)
+//      .handler(RoleHandler.requireRole("ADMIN"))
+//      .handler(ctx -> {
+//        ctx.next();
+//      })
+//      .handler(adminController::bulkUpload);
+
+    router.get("/api/admin/bulk-upload/template")
+      .handler(adminController::downloadCsvTemplate);
+
+
+    router.post("/api/admin/bulk-upload").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(ctx -> ctx.next()).handler(adminController::uploadCsv);
+    router.get("/api/admin/bulk-upload/:id").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(adminController::getBulkStatus);
+    router.get("/api/admin/bulk-upload/:id/errors").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(adminController::getBulkErrors);
+
 
     vertx.createHttpServer()
       .requestHandler(router)
@@ -120,10 +152,10 @@ public class MainVerticle extends AbstractVerticle {
   public static void main(String[] args) {
     io.vertx.core.Vertx vertx = io.vertx.core.Vertx.vertx();
     vertx.deployVerticle(new MainVerticle())
-      .onSuccess(id -> System.out.println("✅ Deployment Succeeded!"))
+      .onSuccess(id -> System.out.println(" Deployment Succeeded!"))
       .onFailure(err -> {
         System.err.println("Deployment FAILED. Here is the error:");
-        err.printStackTrace(); // This prints the REAL reason
+        err.printStackTrace();
       });
   }
 
