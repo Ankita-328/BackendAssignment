@@ -4,6 +4,8 @@ import com.example.starter.model.Role;
 import com.example.starter.service.AdminService;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
+import com.example.starter.utils.CsvUtil;
+import java.util.List;
 
 public class AdminController {
 
@@ -131,9 +133,8 @@ public class AdminController {
       com.example.starter.model.KycStatus newStatus =
         com.example.starter.model.KycStatus.valueOf(body.getString("status").toUpperCase());
 
-      String reason = body.getString("reason");
 
-      adminService.updateKycStatus(kycId, newStatus, reason).subscribe(
+      adminService.updateKycStatus(kycId, newStatus).subscribe(
         updatedKyc -> {
           ctx.response().setStatusCode(200).end(
             new JsonObject()
@@ -155,5 +156,74 @@ public class AdminController {
         new JsonObject().put("error", "Invalid status. Allowed: PENDING, SUBMITTED, APPROVED, REJECTED").encode()
       );
     }
+  }
+//  public void bulkUpload(RoutingContext ctx) {
+//    if (ctx.fileUploads().isEmpty()) {
+//      ctx.response().setStatusCode(400).end(new JsonObject().put("error", "No CSV file uploaded").encode());
+//      return;
+//    }
+//
+//    io.vertx.ext.web.FileUpload file = ctx.fileUploads().iterator().next();
+//    String filePath = file.uploadedFileName();
+//
+//    try {
+//      List<JsonObject> users = CsvUtil.parseCsv(filePath);
+//
+//      adminService.bulkOnboard(users).subscribe(
+//        results -> ctx.json(new JsonObject().put("results", results)),
+//        error -> ctx.response().setStatusCode(500).end(new JsonObject().put("error", error.getMessage()).encode())
+//      );
+//    } catch (Exception e) {
+//      ctx.response().setStatusCode(400).end(new JsonObject().put("error", "Failed to parse CSV: " + e.getMessage()).encode());
+//    }
+//  }
+  public void downloadCsvTemplate(RoutingContext ctx) {
+    try {
+      java.net.URL resource = getClass().getClassLoader().getResource("users.csv");
+      if (resource == null) {
+        ctx.response().setStatusCode(404).end("File not found!");
+        return;
+      }
+      String path = java.nio.file.Paths.get(resource.toURI()).toFile().getAbsolutePath();
+      ctx.response()
+        .putHeader("Content-Disposition", "attachment; filename=\"users.csv\"")
+        .sendFile(path);
+
+    } catch (Exception e) {
+      ctx.response().setStatusCode(500).end("Error: " + e.getMessage());
+    }
+  }
+
+  public void uploadCsv(RoutingContext ctx) {
+    if (ctx.fileUploads().isEmpty()) {
+      ctx.response().setStatusCode(400).end("No CSV file");
+      return;
+    }
+
+    String adminId = ctx.user().principal().getString("userId");
+    String filePath = ctx.fileUploads().iterator().next().uploadedFileName();
+
+    adminService.startBulkUpload(adminId, filePath).subscribe(
+      uploadId -> ctx.json(new JsonObject()
+        .put("message", "Upload started")
+        .put("uploadId", uploadId)), // Returns ID immediately
+      err -> ctx.response().setStatusCode(400).end(err.getMessage())
+    );
+  }
+
+  public void getBulkStatus(RoutingContext ctx) {
+    String uploadId = ctx.pathParam("id");
+    adminService.getUploadStatus(uploadId).subscribe(
+      status -> ctx.json(status),
+      err -> ctx.response().setStatusCode(404).end("Job not found")
+    );
+  }
+
+  public void getBulkErrors(RoutingContext ctx) {
+    String uploadId = ctx.pathParam("id");
+    adminService.getUploadErrors(uploadId).subscribe(
+      errors -> ctx.json(errors),
+      err -> ctx.response().setStatusCode(500).end(err.getMessage())
+    );
   }
 }

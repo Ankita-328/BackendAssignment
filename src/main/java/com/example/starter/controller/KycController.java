@@ -22,7 +22,7 @@ public class KycController {
     }
 
     FileUpload file = ctx.fileUploads().iterator().next();
-    String filePath = file.uploadedFileName(); // Vert.x stores it in 'uploads/' folder
+    String filePath = file.uploadedFileName();
     String docType = ctx.request().getFormAttribute("documentType");
     String docNumber = ctx.request().getFormAttribute("documentNumber");
 
