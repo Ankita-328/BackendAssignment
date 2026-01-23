@@ -1,14 +1,26 @@
 package com.example.starter.service;
 
-import com.example.starter.model.KycStatus; // <--- Added Import
 import com.example.starter.model.Role;
 import com.example.starter.model.User;
+import com.example.starter.model.TeacherDetails;
+import com.example.starter.model.StudentDetails;
 import com.example.starter.repository.UserRepository;
 import com.example.starter.repository.KycRepository;
+import com.example.starter.repository.StudentDetailsRepository;
+import com.example.starter.repository.TeacherDetailsRepository;
+
 import com.example.starter.utils.PasswordUtil;
 import io.reactivex.rxjava3.core.Single;
 import com.example.starter.model.KycSubmission;
-import com.example.starter.model.KycStatus;
+import io.reactivex.rxjava3.core.Observable;
+
+import com.example.starter.model.BulkUpload;
+import com.example.starter.repository.BulkUploadRepository;
+import com.example.starter.utils.CsvUtil;
+import java.time.LocalDateTime;
+import io.vertx.core.json.JsonObject;
+import com.example.starter.model.BulkUploadError;
+import java.util.concurrent.atomic.AtomicInteger; // Required for counting inside loops
 
 import java.util.List;
 import java.util.UUID;
@@ -17,11 +29,16 @@ public class AdminService {
 
   private final UserRepository userRepository;
   private final KycRepository kycRepository;
+  private final BulkUploadRepository bulkRepository;
 
-  public AdminService(UserRepository userRepository, KycRepository kycRepository) {
-    this.userRepository = userRepository;
-    this.kycRepository = kycRepository;
+
+
+  public AdminService(UserRepository userRepo, KycRepository kycRepo, BulkUploadRepository bulkRepo) {
+    this.userRepository = userRepo;
+    this.kycRepository = kycRepo;
+    this.bulkRepository = bulkRepo;
   }
+
 
   public Single<User> onboardUser(String fullName, String email, String mobile, String initialPassword, Role role) {
     return userRepository.findByEmail(email).flatMap(optUser -> {
@@ -93,12 +110,124 @@ public class AdminService {
 //  }
 
 
-  public Single<KycSubmission> updateKycStatus(String kycId, com.example.starter.model.KycStatus newStatus, String reason) {
+  public Single<KycSubmission> updateKycStatus(String kycId, com.example.starter.model.KycStatus newStatus) {
     return kycRepository.findById(kycId).flatMap(kyc -> {
       if (kyc == null) throw new RuntimeException("KYC not found");
       kyc.setStatus(newStatus);
       return kycRepository.save(kyc);
     });
+  }
+
+
+
+//  public Single<List<String>> bulkOnboard(List<io.vertx.core.json.JsonObject> usersData) {
+//    return Observable.fromIterable(usersData)
+//      .flatMapSingle(data -> {
+//        String roleStr = data.getString("role");
+//        Role role;
+//        try {
+//          role = Role.valueOf(roleStr);
+//        } catch (Exception e) {
+//          return Single.just("Skipped " + data.getString("email") + ": Invalid Role");
+//        }
+//
+//        return onboardUser(
+//          data.getString("fullName"),
+//          data.getString("email"),
+//          data.getString("mobileNumber"),
+//          data.getString("initialPassword"),
+//          role
+//        )
+//          .map(u -> "Created: " + u.getEmail())
+//          .onErrorReturn(e -> "Failed " + data.getString("email") + ": " + e.getMessage());
+//      })
+//      .toList();
+//  }
+
+
+  public Single<String> startBulkUpload(String adminId, String filePath) {
+    String uploadId = UUID.randomUUID().toString();
+
+    List<JsonObject> usersData;
+    try {
+      usersData = CsvUtil.parseCsv(filePath);
+    } catch (Exception e) {
+      return Single.error(new RuntimeException("Invalid CSV File"));
+    }
+
+    BulkUpload upload = new BulkUpload();
+    upload.setId(uploadId);
+    upload.setAdminId(adminId);
+    upload.setTotalRecords(usersData.size());
+    upload.setStatus("IN_PROGRESS");
+    upload.setSuccessCount(0);
+    upload.setFailureCount(0);
+
+    return bulkRepository.save(upload).map(saved -> {
+      processBulkUsers(uploadId, usersData);
+
+      return uploadId;
+    });
+  }
+
+  private void processBulkUsers(String uploadId, List<JsonObject> users) {
+    io.reactivex.rxjava3.core.Observable.fromIterable(users)
+      .concatMapSingle(data -> {
+        com.example.starter.model.Role role;
+        try {
+          role = com.example.starter.model.Role.valueOf(data.getString("role").toUpperCase());
+        } catch (Exception e) {
+          return io.reactivex.rxjava3.core.Single.just("ERROR:Invalid Role");
+        }
+
+        return onboardUser(
+          data.getString("fullName"),
+          data.getString("email"),
+          data.getString("mobileNumber"),
+          data.getString("initialPassword"),
+          role
+        )
+          .map(u -> "SUCCESS") // If successful
+          .onErrorReturn(e -> "ERROR:" + e.getMessage());
+      })
+      .toList()
+      .subscribe(results -> {
+        int success = 0;
+        int failure = 0;
+
+        for (int i = 0; i < results.size(); i++) {
+          String result = results.get(i);
+          if ("SUCCESS".equals(result)) {
+            success++;
+          } else {
+            failure++;
+            String reason = result.replace("ERROR:", "");
+            String email = users.get(i).getString("email");
+
+            bulkRepository.saveError(uploadId, email, reason);
+          }
+        }
+
+        int finalSuccess = success;
+        int finalFailure = failure;
+
+        bulkRepository.findById(uploadId).subscribe(record -> {
+          if (record != null) {
+            record.setSuccessCount(finalSuccess);
+            record.setFailureCount(finalFailure);
+            record.setStatus("COMPLETED");
+            bulkRepository.save(record).subscribe();
+          }
+        });
+      });
+  }
+
+  public Single<BulkUpload> getUploadStatus(String uploadId) {
+    return bulkRepository.findById(uploadId);
+  }
+
+  public Single<List<BulkUploadError>> getUploadErrors(String uploadId) {
+    return bulkRepository.findErrors(uploadId);
   }
 
 }
