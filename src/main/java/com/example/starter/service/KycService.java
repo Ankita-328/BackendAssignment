@@ -6,42 +6,92 @@ import com.example.starter.repository.KycRepository;
 import com.example.starter.repository.UserRepository;
 import io.reactivex.rxjava3.core.Single;
 import java.util.UUID;
-
+import java.util.regex.Pattern;
 public class KycService {
 
   private final KycRepository kycRepository;
   private final UserRepository userRepository;
+  private final AiService aiService;
 
-  public KycService(KycRepository kycRepository, UserRepository userRepository) {
+  public KycService(KycRepository kycRepository, UserRepository userRepository, AiService aiService) {
     this.kycRepository = kycRepository;
     this.userRepository = userRepository;
+    this.aiService = aiService;
   }
 
-  public Single<KycSubmission> submitKyc(String userId, String docType, String docNumber, String filePath) {
-    return userRepository.findById(UUID.fromString(userId)).flatMap(optUser -> {
-      if (optUser.isEmpty()) return Single.error(new RuntimeException("User not found"));
-      User user = optUser.get();
 
-      return kycRepository.findByUserId(userId).flatMap(optKyc -> {
-        if (optKyc.isPresent()) {
-          return Single.error(new RuntimeException("KYC already submitted. Current status: " + optKyc.get().getStatus()));
-        }
-
-        KycSubmission kyc = new KycSubmission();
-        kyc.setUser(user);
-        kyc.setDocumentType(docType);
-        kyc.setDocumentNumber(docNumber);
-        kyc.setDocumentPath(filePath);
-
-        return kycRepository.save(kyc);
-      });
-    });
-  }
 
   public Single<KycSubmission> getStatus(String userId) {
     return kycRepository.findByUserId(userId).map(optKyc -> {
       if (optKyc.isEmpty()) throw new RuntimeException("No KYC submission found");
       return optKyc.get();
     });
+  }
+  private void validateDocument(String type, String number) {
+    if (type == null || number == null) {
+      throw new IllegalArgumentException("Document type and number cannot be null");
+    }
+
+    switch (type.toUpperCase()) {
+      case "PAN":
+        String panRegex = "[A-Z]{5}[0-9]{4}[A-Z]{1}";
+        if (!Pattern.matches(panRegex, number)) {
+          throw new IllegalArgumentException("Invalid PAN format. Expected format: ABCDE1234F");
+        }
+        break;
+
+      case "AADHAAR":
+        String aadhaarRegex = "\\d{12}";
+        if (!Pattern.matches(aadhaarRegex, number)) {
+          throw new IllegalArgumentException("Invalid Aadhaar format. Expected 12 digits.");
+        }
+        break;
+
+      default:
+        throw new IllegalArgumentException("Invalid Document Type. Please check docType is 'AADHAAR' or 'PAN'");
+
+    }
+  }
+
+  public Single<KycSubmission> submitKyc(String userId, String documentType, String documentNumber, String filePath) {
+
+    UUID userUuid;
+    try {
+      userUuid = UUID.fromString(userId);
+    } catch (IllegalArgumentException e) {
+      return Single.error(new RuntimeException("Invalid User ID format"));
+    }
+    try {
+      validateDocument(documentType, documentNumber);
+    } catch (IllegalArgumentException e) {
+      return Single.error(e);
+    }
+
+    return userRepository.findById(userUuid)
+      .flatMap(optUser -> {
+        if (optUser.isEmpty()) {
+          return Single.error(new RuntimeException("User not found"));
+        }
+
+        KycSubmission kyc = new KycSubmission();
+        kyc.setId(UUID.randomUUID());
+        kyc.setUser(optUser.get()); // Link the User object
+        kyc.setDocumentType(documentType);
+        kyc.setDocumentNumber(documentNumber);
+        kyc.setDocumentPath(filePath);
+        kyc.setAiStatus("PENDING");
+
+        return kycRepository.save(kyc);
+      })
+      .map(savedKyc -> {
+        String userRole = savedKyc.getUser().getRole().toString();
+        aiService.analyzeKyc(
+          savedKyc.getId().toString(),
+          documentType,
+          userRole
+        );
+
+        return savedKyc;
+      });
   }
 }
