@@ -35,7 +35,6 @@ public class KycRepository {
     return Single.create(emitter -> {
       vertx.executeBlocking(promise -> {
         try {
-          // .fetch("user") tells Ebean to also grab the User's name/email automatically
           java.util.List<KycSubmission> list = DB.find(KycSubmission.class)
             .fetch("user")
             .findList();
@@ -68,19 +67,12 @@ public class KycRepository {
     });
   }
 
-  public Single<KycSubmission> findById(String id) {
-    return Single.create(emitter -> {
-      vertx.executeBlocking(promise -> {
-        try {
-          KycSubmission kyc = DB.find(KycSubmission.class, id);
-          promise.complete(kyc);
-        } catch (Exception e) {
-          promise.fail(e);
-        }
-      }, res -> {
-        if (res.succeeded()) emitter.onSuccess((KycSubmission) res.result());
-        else emitter.onError(res.cause());
-      });
-    });
-  }
+
+public Single<Optional<KycSubmission>> findById(String id) {
+  return Single.fromCallable(() ->
+    DB.find(KycSubmission.class)
+      .where().eq("id", UUID.fromString(id))
+      .findOneOrEmpty()
+  );
+}
 }

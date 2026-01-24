@@ -39,6 +39,18 @@ public class KycSubmission extends Model {
     this.submittedAt = Instant.now();
   }
 
+  @Column(name = "ai_status")
+  private String aiStatus = "PENDING";
+
+  @Column(name = "ai_analysis", columnDefinition = "LONGTEXT")
+  private String aiAnalysis;
+
+
+  public String getAiStatus() { return aiStatus; }
+  public void setAiStatus(String aiStatus) { this.aiStatus = aiStatus; }
+
+  public String getAiAnalysis() { return aiAnalysis; }
+  public void setAiAnalysis(String aiAnalysis) { this.aiAnalysis = aiAnalysis; }
 
   public UUID getId() { return id; }
   public void setId(UUID id) { this.id = id; }

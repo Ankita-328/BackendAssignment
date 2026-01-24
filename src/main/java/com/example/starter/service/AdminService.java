@@ -20,7 +20,6 @@ import com.example.starter.utils.CsvUtil;
 import java.time.LocalDateTime;
 import io.vertx.core.json.JsonObject;
 import com.example.starter.model.BulkUploadError;
-import java.util.concurrent.atomic.AtomicInteger; // Required for counting inside loops
 
 import java.util.List;
 import java.util.UUID;
@@ -102,47 +101,23 @@ public class AdminService {
     return kycRepository.findAll();
   }
 
-//  public Single<KycSubmission> verifyKyc(String kycId, boolean approve, String reason) {
-//    return kycRepository.findById(kycId).flatMap(kyc -> {
-//      if (kyc == null) throw new RuntimeException("KYC not found");
-//      return kycRepository.save(kyc);
-//    });
-//  }
+
+public Single<KycSubmission> updateKycStatus(String kycId, com.example.starter.model.KycStatus newStatus) {
+  return kycRepository.findById(kycId).flatMap(optKyc -> { // optKyc is Optional<KycSubmission>
+
+    if (optKyc.isEmpty()) {
+      return Single.error(new RuntimeException("KYC not found"));
+    }
+
+    KycSubmission kyc = optKyc.get();
+    kyc.setStatus(newStatus);
+
+    return kycRepository.save(kyc);
+  });
+}
 
 
-  public Single<KycSubmission> updateKycStatus(String kycId, com.example.starter.model.KycStatus newStatus) {
-    return kycRepository.findById(kycId).flatMap(kyc -> {
-      if (kyc == null) throw new RuntimeException("KYC not found");
-      kyc.setStatus(newStatus);
-      return kycRepository.save(kyc);
-    });
-  }
 
-
-
-//  public Single<List<String>> bulkOnboard(List<io.vertx.core.json.JsonObject> usersData) {
-//    return Observable.fromIterable(usersData)
-//      .flatMapSingle(data -> {
-//        String roleStr = data.getString("role");
-//        Role role;
-//        try {
-//          role = Role.valueOf(roleStr);
-//        } catch (Exception e) {
-//          return Single.just("Skipped " + data.getString("email") + ": Invalid Role");
-//        }
-//
-//        return onboardUser(
-//          data.getString("fullName"),
-//          data.getString("email"),
-//          data.getString("mobileNumber"),
-//          data.getString("initialPassword"),
-//          role
-//        )
-//          .map(u -> "Created: " + u.getEmail())
-//          .onErrorReturn(e -> "Failed " + data.getString("email") + ": " + e.getMessage());
-//      })
-//      .toList();
-//  }
 
 
   public Single<String> startBulkUpload(String adminId, String filePath) {
@@ -187,7 +162,7 @@ public class AdminService {
           data.getString("initialPassword"),
           role
         )
-          .map(u -> "SUCCESS") // If successful
+          .map(u -> "SUCCESS")
           .onErrorReturn(e -> "ERROR:" + e.getMessage());
       })
       .toList()

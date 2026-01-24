@@ -5,9 +5,7 @@ import com.example.starter.config.AuthConfig;
 import com.example.starter.config.DbConfig;
 import com.example.starter.controller.*;
 import com.example.starter.repository.*;
-import com.example.starter.service.AdminService;
-import com.example.starter.service.AuthService;
-import com.example.starter.service.UpdateService;
+import com.example.starter.service.*;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -17,7 +15,6 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.JWTAuthHandler;
 
-import com.example.starter.service.KycService;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.vertx.core.json.jackson.DatabindCodec;
 
@@ -51,9 +48,14 @@ public class MainVerticle extends AbstractVerticle {
     AdminController adminController = new AdminController(adminService);
     UpdateController updateController = new UpdateController(updateService);
 
+    io.vertx.rxjava3.core.Vertx rxVertx = io.vertx.rxjava3.core.Vertx.newInstance(vertx);
+    AiService aiService = new AiService(rxVertx, kycRepository);
 
-    KycService kycService = new KycService(kycRepository, userRepository);
-    KycController kycController = new KycController(kycService);
+    KycService kycService = new KycService(kycRepository, userRepository,aiService);
+    KycController kycController = new KycController(kycService, kycRepository);
+
+
+
 
 
     Router router = Router.router(vertx);
@@ -121,13 +123,7 @@ public class MainVerticle extends AbstractVerticle {
       .handler(RoleHandler.requireRole("ADMIN"))
       .handler(adminController::reviewKyc);
 
-//    router.post("/api/admin/bulk-upload")
-//      .handler(jwtHandler)
-//      .handler(RoleHandler.requireRole("ADMIN"))
-//      .handler(ctx -> {
-//        ctx.next();
-//      })
-//      .handler(adminController::bulkUpload);
+
 
     router.get("/api/admin/bulk-upload/template")
       .handler(adminController::downloadCsvTemplate);
@@ -137,6 +133,7 @@ public class MainVerticle extends AbstractVerticle {
     router.get("/api/admin/bulk-upload/:id").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(adminController::getBulkStatus);
     router.get("/api/admin/bulk-upload/:id/errors").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(adminController::getBulkErrors);
 
+    router.get("/api/admin/kyc/:id").handler(kycController::getKycById);
 
     vertx.createHttpServer()
       .requestHandler(router)

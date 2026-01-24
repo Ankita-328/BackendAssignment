@@ -28,6 +28,9 @@ dependencies {
   implementation("io.vertx:vertx-core")
   implementation("io.vertx:vertx-web")
 
+  implementation("io.vertx:vertx-web-client:4.5.1")
+  implementation("io.vertx:vertx-rx-java3:4.5.1")
+
   implementation("io.vertx:vertx-rx-java3")
 
   implementation("io.vertx:vertx-auth-jwt")
