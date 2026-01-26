@@ -88,7 +88,7 @@ public class KycService {
         aiService.analyzeKyc(
           savedKyc.getId().toString(),
           documentType,
-          userRole
+          userRole,filePath
         );
 
         return savedKyc;

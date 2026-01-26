@@ -56,7 +56,7 @@ public void getKycById(RoutingContext ctx) {
           JsonObject response = new JsonObject();
           response.put("kycId", kyc.getId().toString());
 
-          // User Info
+
           if (kyc.getUser() != null) {
             response.put("userId", kyc.getUser().getId().toString());
             response.put("role", kyc.getUser().getRole());

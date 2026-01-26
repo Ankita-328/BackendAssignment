@@ -10,15 +10,10 @@ public class DbConfig {
     DatabaseConfig config = new DatabaseConfig();
     config.loadFromProperties();
 
-
-    String envPassword = System.getenv("DB_PASSWORD");
-    if (envPassword != null && !envPassword.isEmpty()) {
-      config.getDataSourceConfig().setPassword(envPassword);
-    }
+    config.setDdlGenerate(true);
+    config.setDdlRun(true);
 
     Database db = DatabaseFactory.create(config);
-
-    config.addClass(com.example.starter.model.KycSubmission.class);
 
     System.out.println("Database connected successfully ");
   }
