@@ -31,6 +31,10 @@ public class KycService {
     if (type == null || number == null) {
       throw new IllegalArgumentException("Document type and number cannot be null");
     }
+    String lowerPath = type.toLowerCase();
+    boolean isValid = lowerPath.endsWith(".jpg") ||
+      lowerPath.endsWith(".jpeg") ||
+      lowerPath.endsWith(".pdf");
 
     switch (type.toUpperCase()) {
       case "PAN":
