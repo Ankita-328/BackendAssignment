@@ -4,10 +4,11 @@ import com.example.starter.service.UpdateService;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 
-public class UpdateController {
-  private final UpdateService updateService;
+public enum UpdateController {
+  INSTANCE;
+  private UpdateService updateService;
 
-  public UpdateController(UpdateService updateService) {
+  public void init(UpdateService updateService) {
     this.updateService = updateService;
   }
 
