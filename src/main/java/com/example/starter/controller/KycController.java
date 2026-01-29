@@ -9,12 +9,13 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
 
-public class KycController {
+public enum KycController {
+  INSTANCE;
 
-  private final KycService kycService;
-  private final KycRepository kycRepository;
+  private KycService kycService;
+  private KycRepository kycRepository;
 
-  public KycController(KycService kycService, KycRepository kycRepository) {
+  public void init(KycService kycService, KycRepository kycRepository) {
     this.kycService = kycService;
     this.kycRepository = kycRepository;
   }
@@ -31,53 +32,55 @@ public class KycController {
     String filePath = file.uploadedFileName();
     String docType = ctx.request().getFormAttribute("documentType");
     String docNumber = ctx.request().getFormAttribute("documentNumber");
+    String fileName = file.fileName();
+
 
     if (docType == null || docNumber == null) {
       ctx.response().setStatusCode(400).end(new JsonObject().put("error", "Missing documentType or documentNumber").encode());
       return;
     }
 
-    kycService.submitKyc(userId, docType, docNumber, filePath).subscribe(
+    kycService.submitKyc(userId, docType, docNumber, filePath, fileName).subscribe(
       kyc -> ctx.response().setStatusCode(201).end(new JsonObject().put("message", "KYC Submitted Successfully").put("status", kyc.getStatus()).encode()),
       error -> ctx.response().setStatusCode(400).end(new JsonObject().put("error", error.getMessage()).encode())
     );
   }
 
-//
-public void getKycById(RoutingContext ctx) {
-  String kycId = ctx.pathParam("id");
+  //
+  public void getKycById(RoutingContext ctx) {
+    String kycId = ctx.pathParam("id");
 
-  kycRepository.findById(kycId)
-    .subscribe(
-      optKyc -> {
-        if (optKyc.isPresent()) {
-          KycSubmission kyc = optKyc.get();
+    kycRepository.findById(kycId)
+      .subscribe(
+        optKyc -> {
+          if (optKyc.isPresent()) {
+            KycSubmission kyc = optKyc.get();
 
-          JsonObject response = new JsonObject();
-          response.put("kycId", kyc.getId().toString());
+            JsonObject response = new JsonObject();
+            response.put("kycId", kyc.getId().toString());
 
 
-          if (kyc.getUser() != null) {
-            response.put("userId", kyc.getUser().getId().toString());
-            response.put("role", kyc.getUser().getRole());
+            if (kyc.getUser() != null) {
+              response.put("userId", kyc.getUser().getId().toString());
+              response.put("role", kyc.getUser().getRole());
+            }
+
+
+
+            ctx.response()
+              .putHeader("Content-Type", "application/json")
+              .end(response.encodePrettily());
+
+          } else {
+            ctx.response().setStatusCode(404).end(new JsonObject().put("error", "KYC ID not found").encode());
           }
-
-
-
-          ctx.response()
-            .putHeader("Content-Type", "application/json")
-            .end(response.encodePrettily());
-
-        } else {
-          ctx.response().setStatusCode(404).end(new JsonObject().put("error", "KYC ID not found").encode());
+        },
+        err -> {
+          err.printStackTrace();
+          ctx.response().setStatusCode(500).end("Internal Server Error");
         }
-      },
-      err -> {
-        err.printStackTrace();
-        ctx.response().setStatusCode(500).end("Internal Server Error");
-      }
-    );
-}
+      );
+  }
 
   public void getStatus(RoutingContext ctx) {
     String userId = ctx.user().principal().getString("userId");
