@@ -27,25 +27,19 @@ public class KycService {
       return optKyc.get();
     });
   }
-  private void validateDocument(String type, String number) {
-    if (type == null || number == null) {
-      throw new IllegalArgumentException("Document type and number cannot be null");
+  private void validateDocument(String type, String number, String fileName) {
+    if (type == null || number == null || fileName == null) {
+      throw new IllegalArgumentException("Document type, number, and file name cannot be null");
     }
 
-    String lowerPath = type.toLowerCase();
+    String lowerPath = fileName.trim().toLowerCase();
     boolean isValid = lowerPath.endsWith(".jpg") ||
       lowerPath.endsWith(".jpeg") ||
       lowerPath.endsWith(".pdf");
 
-//    String lowerPath = type.toLowerCase();
-//    boolean isValid = lowerPath.endsWith(".jpg") ||
-//      lowerPath.endsWith(".jpeg") ||
-//      lowerPath.endsWith(".pdf");
-//
-//    if (!isValid) {
-//      throw new IllegalArgumentException("Invalid file type. Only JPG, JPEG, and PDF are allowed.");
-//    }
-
+    if (!isValid) {
+      throw new IllegalArgumentException("Invalid file type: " + fileName  + ". Only JPG, JPEG, and PDF are allowed.");
+    }
 
     switch (type.toUpperCase()) {
       case "PAN":
@@ -68,7 +62,7 @@ public class KycService {
     }
   }
 
-  public Single<KycSubmission> submitKyc(String userId, String documentType, String documentNumber, String filePath) {
+  public Single<KycSubmission> submitKyc(String userId, String documentType, String documentNumber, String filePath, String fileName) {
 
     UUID userUuid;
     try {
@@ -77,7 +71,7 @@ public class KycService {
       return Single.error(new RuntimeException("Invalid User ID format"));
     }
     try {
-      validateDocument(documentType, documentNumber);
+      validateDocument(documentType, documentNumber, fileName);
     } catch (IllegalArgumentException e) {
       return Single.error(e);
     }
