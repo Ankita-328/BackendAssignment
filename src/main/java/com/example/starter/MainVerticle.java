@@ -14,6 +14,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.JWTAuthHandler;
+import io.vertx.core.http.Cookie;
 
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.vertx.core.json.jackson.DatabindCodec;
@@ -44,15 +45,15 @@ public class MainVerticle extends AbstractVerticle {
     UpdateService updateService = new UpdateService(userRepository,teacherDetailsRepo,studentDetailsRepo);
 
 
-    AuthController authController = new AuthController(authService);
-    AdminController adminController = new AdminController(adminService);
-    UpdateController updateController = new UpdateController(updateService);
+    AuthController.INSTANCE.init(authService);
+    AdminController.INSTANCE.init(adminService);
+    UpdateController.INSTANCE.init(updateService);
 
     io.vertx.rxjava3.core.Vertx rxVertx = io.vertx.rxjava3.core.Vertx.newInstance(vertx);
     AiService aiService = new AiService(rxVertx, kycRepository);
 
     KycService kycService = new KycService(kycRepository, userRepository,aiService);
-    KycController kycController = new KycController(kycService, kycRepository);
+    KycController.INSTANCE.init(kycService, kycRepository);
 
 
 
@@ -62,81 +63,91 @@ public class MainVerticle extends AbstractVerticle {
     router.route().handler(BodyHandler.create().setUploadsDirectory("uploads"));
 
 
-    router.post("/api/auth/login").handler(authController::login);
+    router.route().handler(ctx -> {
+      Cookie cookie = ctx.request().getCookie("jwt");
+      if (cookie != null) {
+        String token = cookie.getValue();
+        ctx.request().headers().set("Authorization", "Bearer " + token);
+      }
+      ctx.next();
+    });
+
+
+    router.post("/api/auth/login").handler(AuthController.INSTANCE::login);
 
 
     router.post("/api/admin/onboard/student")
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("ADMIN"))
-      .handler(adminController::onboardStudent);
+      .handler(AdminController.INSTANCE::onboardStudent);
 
     router.post("/api/admin/onboard/teacher")
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("ADMIN"))
-      .handler(adminController::onboardTeacher);
+      .handler(AdminController.INSTANCE::onboardTeacher);
 
     router.get("/api/admin/profile")
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("ADMIN"))
-      .handler(adminController::getProfile);
+      .handler(AdminController.INSTANCE::getProfile);
 
     router.put("/api/admin/profile")
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("ADMIN"))
-      .handler(adminController::updateProfile);
+      .handler(AdminController.INSTANCE::updateProfile);
 
     router.put("/api/student/profile")
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("STUDENT"))
-      .handler(updateController::updateProfile);
+      .handler(UpdateController.INSTANCE::updateProfile);
 
     router.put("/api/teacher/profile")
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("TEACHER"))
-      .handler(updateController::updateProfile);
+      .handler(UpdateController.INSTANCE::updateProfile);
 
     router.get("/api/admin/users")
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("ADMIN"))
-      .handler(adminController::listUsers);
+      .handler(AdminController.INSTANCE::listUsers);
 
     router.put("/api/admin/users/:userId/status")
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("ADMIN"))
-      .handler(adminController::changeUserStatus);
+      .handler(AdminController.INSTANCE::changeUserStatus);
 
     router.post("/api/kyc/submit")
       .handler(jwtHandler)
-      .handler(kycController::submitKyc);
+      .handler(KycController.INSTANCE::submitKyc);
 
     router.get("/api/kyc/status")
       .handler(jwtHandler)
-      .handler(kycController::getStatus);
+      .handler(KycController.INSTANCE::getStatus);
 
     router.get("/api/admin/kyc")
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("ADMIN"))
-      .handler(adminController::listKycs);
+      .handler(AdminController.INSTANCE::listKycs);
 
     router.put("/api/admin/kyc/:id/review")
       .handler(jwtHandler)
       .handler(RoleHandler.requireRole("ADMIN"))
-      .handler(adminController::reviewKyc);
+      .handler(AdminController.INSTANCE::reviewKyc);
 
 
 
     router.get("/api/admin/bulk-upload/template")
-      .handler(adminController::downloadCsvTemplate);
+      .handler(AdminController.INSTANCE::downloadCsvTemplate);
 
 
-    router.post("/api/admin/bulk-upload").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(ctx -> ctx.next()).handler(adminController::uploadCsv);
-    router.get("/api/admin/bulk-upload/:id").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(adminController::getBulkStatus);
-    router.get("/api/admin/bulk-upload/:id/errors").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(adminController::getBulkErrors);
+    router.post("/api/admin/bulk-upload").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(ctx -> ctx.next()).handler(AdminController.INSTANCE::uploadCsv);
+    router.get("/api/admin/bulk-upload/:id").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(AdminController.INSTANCE::getBulkStatus);
+    router.get("/api/admin/bulk-upload/:id/errors").handler(jwtHandler).handler(RoleHandler.requireRole("ADMIN")).handler(AdminController.INSTANCE::getBulkErrors);
 
-    router.get("/api/admin/kyc/:id").handler(kycController::getKycById);
+    router.get("/api/admin/kyc/:id").handler(KycController.INSTANCE::getKycById);
 
 
-    router.post("/api/auth/logout").handler(authController::logout);
+    router.post("/api/auth/logout").handler(AuthController.INSTANCE::logout);
     vertx.createHttpServer()
       .requestHandler(router)
       .listen(8000, http -> {
