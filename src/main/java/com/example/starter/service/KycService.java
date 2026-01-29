@@ -31,12 +31,12 @@ public class KycService {
     if (type == null || number == null) {
       throw new IllegalArgumentException("Document type and number cannot be null");
     }
-<<<<<<< HEAD
+
     String lowerPath = type.toLowerCase();
     boolean isValid = lowerPath.endsWith(".jpg") ||
       lowerPath.endsWith(".jpeg") ||
       lowerPath.endsWith(".pdf");
-=======
+
 //    String lowerPath = type.toLowerCase();
 //    boolean isValid = lowerPath.endsWith(".jpg") ||
 //      lowerPath.endsWith(".jpeg") ||
@@ -45,7 +45,7 @@ public class KycService {
 //    if (!isValid) {
 //      throw new IllegalArgumentException("Invalid file type. Only JPG, JPEG, and PDF are allowed.");
 //    }
->>>>>>> bc9de24 (cookie & enum functionality)
+
 
     switch (type.toUpperCase()) {
       case "PAN":
