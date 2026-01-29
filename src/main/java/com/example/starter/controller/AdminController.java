@@ -4,14 +4,13 @@ import com.example.starter.model.Role;
 import com.example.starter.service.AdminService;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
-import com.example.starter.utils.CsvUtil;
-import java.util.List;
 
-public class AdminController {
+public enum AdminController {
+  INSTANCE;
 
-  private final AdminService adminService;
+  private AdminService adminService;
 
-  public AdminController(AdminService adminService) {
+  public void init(AdminService adminService) {
     this.adminService = adminService;
   }
 
@@ -157,26 +156,7 @@ public class AdminController {
       );
     }
   }
-//  public void bulkUpload(RoutingContext ctx) {
-//    if (ctx.fileUploads().isEmpty()) {
-//      ctx.response().setStatusCode(400).end(new JsonObject().put("error", "No CSV file uploaded").encode());
-//      return;
-//    }
-//
-//    io.vertx.ext.web.FileUpload file = ctx.fileUploads().iterator().next();
-//    String filePath = file.uploadedFileName();
-//
-//    try {
-//      List<JsonObject> users = CsvUtil.parseCsv(filePath);
-//
-//      adminService.bulkOnboard(users).subscribe(
-//        results -> ctx.json(new JsonObject().put("results", results)),
-//        error -> ctx.response().setStatusCode(500).end(new JsonObject().put("error", error.getMessage()).encode())
-//      );
-//    } catch (Exception e) {
-//      ctx.response().setStatusCode(400).end(new JsonObject().put("error", "Failed to parse CSV: " + e.getMessage()).encode());
-//    }
-//  }
+
   public void downloadCsvTemplate(RoutingContext ctx) {
     try {
       java.net.URL resource = getClass().getClassLoader().getResource("users.csv");
