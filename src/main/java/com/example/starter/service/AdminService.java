@@ -146,8 +146,8 @@ public Single<KycSubmission> updateKycStatus(String kycId, com.example.starter.m
   }
 
   private void processBulkUsers(String uploadId, List<JsonObject> users) {
-    io.reactivex.rxjava3.core.Observable.fromIterable(users)
-      .concatMapSingle(data -> {
+    io.reactivex.rxjava3.core.Observable.fromIterable(users)//fromIterable converts to Observable & Observable emits each item one by one
+      .concatMapSingle(data -> {//Takes each item from an Observable,Transforms it into a Single (async operation),Waits for that Single to complete,Then processes the next item sequentially (one after another)
         com.example.starter.model.Role role;
         try {
           role = com.example.starter.model.Role.valueOf(data.getString("role").toUpperCase());

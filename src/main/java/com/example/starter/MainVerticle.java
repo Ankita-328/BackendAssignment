@@ -135,6 +135,8 @@ public class MainVerticle extends AbstractVerticle {
 
     router.get("/api/admin/kyc/:id").handler(kycController::getKycById);
 
+
+    router.post("/api/auth/logout").handler(authController::logout);
     vertx.createHttpServer()
       .requestHandler(router)
       .listen(8000, http -> {

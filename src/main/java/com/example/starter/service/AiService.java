@@ -19,8 +19,8 @@ public class AiService {
   private final Vertx vertx;
 
 
-    private static final String API_KEY = "sk-or-v1-";
-  private static final String AI_MODEL = "x-ai/grok-4.1-fast";
+    private static final String API_KEY = "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";
+  private static final String AI_MODEL = "x-ai/grok-4-fast";
 
   public AiService(Vertx vertx, KycRepository kycRepository) {
     this.vertx = vertx;
@@ -29,18 +29,30 @@ public class AiService {
   }
 
   public void analyzeKyc(String kycId, String documentType, String userRole, String filePath) {
+<<<<<<< HEAD
    
+=======
+
+>>>>>>> bc9de24 (cookie & enum functionality)
     vertx.fileSystem().readFile(filePath)
       .map(buffer -> Base64.getEncoder().encodeToString(buffer.getBytes()))
       .flatMap(base64Image -> {
 
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> bc9de24 (cookie & enum functionality)
         String promptText = "You are a professional KYC API. Analyze the attached image of a " + documentType +
           " for a user with the role '" + userRole + "'.\n" +
           "Verify if the document is authentic, readable, and matches the declared type.\n" +
           "Output ONLY JSON with: 'confidenceScore' (0-100), 'riskFlags' (list), and 'recommendation' (APPROVE/MANUAL_REVIEW).";
 
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> bc9de24 (cookie & enum functionality)
         JsonArray content = new JsonArray()
           .add(new JsonObject().put("type", "text").put("text", promptText))
           .add(new JsonObject()
@@ -52,7 +64,11 @@ public class AiService {
           .put("messages", new JsonArray().add(new JsonObject().put("role", "user").put("content", content)))
           .put("response_format", new JsonObject().put("type", "json_object"));
 
+<<<<<<< HEAD
       
+=======
+
+>>>>>>> bc9de24 (cookie & enum functionality)
         return webClient.postAbs("https://openrouter.ai/api/v1/chat/completions")
           .putHeader("Authorization", "Bearer " + API_KEY)
           .putHeader("Content-Type", "application/json")
@@ -64,7 +80,11 @@ public class AiService {
           String rawContent = response.bodyAsJsonObject()
             .getJsonArray("choices").getJsonObject(0).getJsonObject("message").getString("content");
 
+<<<<<<< HEAD
          
+=======
+
+>>>>>>> bc9de24 (cookie & enum functionality)
           String cleanJson = rawContent.replaceAll("```json", "").replaceAll("```", "").trim();
           if(cleanJson.indexOf("{") > 0) cleanJson = cleanJson.substring(cleanJson.indexOf("{"));
           if(cleanJson.lastIndexOf("}") < cleanJson.length() -1) cleanJson = cleanJson.substring(0, cleanJson.lastIndexOf("}") + 1);

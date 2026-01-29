@@ -11,6 +11,19 @@ public class AuthController {
   public AuthController(AuthService authService) {
     this.authService = authService;
   }
+  public void logout(RoutingContext ctx) {
+    if (ctx.session() != null) {
+      ctx.session().destroy();
+    }
+
+    ctx.response()
+      .setStatusCode(200)
+      .putHeader("content-type", "application/json")
+      .end(new JsonObject()
+        .put("status", "success")
+        .put("message", "Logged out successfully")
+        .encode());
+  }
 
   public void login(RoutingContext ctx) {
     JsonObject body = ctx.body().asJsonObject();
