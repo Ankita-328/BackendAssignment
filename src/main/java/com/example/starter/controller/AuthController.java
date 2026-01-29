@@ -1,22 +1,26 @@
 package com.example.starter.controller;
 
 import com.example.starter.service.AuthService;
+import io.vertx.core.http.Cookie;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 
-public class AuthController {
+public enum AuthController {
+  INSTANCE;
 
-  private final AuthService authService;
+  private AuthService authService;
 
-  public AuthController(AuthService authService) {
+  public void init(AuthService authService) {
     this.authService = authService;
   }
+
   public void logout(RoutingContext ctx) {
     if (ctx.session() != null) {
       ctx.session().destroy();
     }
 
     ctx.response()
+      .addCookie(Cookie.cookie("jwt", "").setMaxAge(0).setPath("/"))
       .setStatusCode(200)
       .putHeader("content-type", "application/json")
       .end(new JsonObject()
@@ -38,7 +42,8 @@ public class AuthController {
     authService.login(body.getString("email"), body.getString("password"))
       .subscribe(
         token -> {
-          ctx.response().putHeader("Content-Type", "application/json")
+          ctx.response().addCookie(Cookie.cookie("jwt", token).setHttpOnly(true).setPath("/"))
+            .putHeader("Content-Type", "application/json")
             .end(new JsonObject().put("token", token).encode());
         },
         error -> {
